@@ -15,7 +15,7 @@ from xgboost import XGBClassifier
 class DelayModel:
 
     TOP_FEATURES = [
-        "OPERA_Latin American Wings",
+        "OPERA_Latin American Wings", 
         "MES_7",
         "MES_10",
         "OPERA_Grupo LATAM",
@@ -24,7 +24,7 @@ class DelayModel:
         "MES_4",
         "MES_11",
         "OPERA_Sky Airline",
-        "OPERA_Copa Air",
+        "OPERA_Copa Air"
     ]
 
     DATA_SPLITTING_RANDOM_STATE = 42
@@ -163,7 +163,7 @@ class DelayModel:
             model.load_model(str(model_path))
 
             logging.info("Model loaded successfully")
-            
+
             return model
 
         except FileNotFoundError as e:
@@ -202,7 +202,7 @@ class DelayModel:
 
         # Create a dictionary mapping class labels to weights
         class_weights = dict(zip(classes, weights))
-        
+
         print(class_weights)
 
         return class_weights
@@ -258,7 +258,7 @@ class DelayModel:
 
         # For binary classification, XGBoost uses scale_pos_weight
         scale_pos_weight = class_weights[1] / class_weights[0]
-        
+
         print(scale_pos_weight)
 
         # Initialize and train the model
