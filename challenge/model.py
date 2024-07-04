@@ -9,7 +9,7 @@ from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
-from xgb import XGBClassifier
+from xgboost import XGBClassifier
 
 
 class DelayModel:
@@ -33,15 +33,16 @@ class DelayModel:
     MODEL_RANDOM_STATE = 1
     LEARNING_RATE = 0.01
 
-    DELAY_THRESHOLD_MINUTES = 1
+    DELAY_THRESHOLD_MINUTES = 15
 
     MODEL_FILE_NAME = Path("model.json")
-    MODEL_PATH = Path("challenge/models")
+    MODEL_PATH = Path("models")
 
     def __init__(self):
         self._model: Union[BaseEstimator, ClassifierMixin] = self._load_model(
             self.complete_model_path
         )
+        self.target_column = None
 
     @property
     def complete_model_path(self) -> Path:
@@ -57,7 +58,7 @@ class DelayModel:
 
     def _get_minute_diff(self, data: pd.DataFrame) -> pd.Series:
         """
-        Calculate the difference in minutes between two datetime columns in a 
+        Calculate the difference in minutes between two datetime columns in a
         DataFrame.
 
         Parameters
@@ -129,11 +130,11 @@ class DelayModel:
         delay exceeds the threshold (1 if delay > threshold, else 0).
 
         """
-        data["min_diff"] = self._get_minute_diff()
+        data["min_diff"] = self._get_minute_diff(data)
         delay_target = np.where(data["min_diff"] > self.DELAY_THRESHOLD_MINUTES, 1, 0)
         return pd.DataFrame({target_column: delay_target}, index=data.index)
 
-    def _load_model(self, model_path: Path):
+    def _load_model(self, model_path: Path) -> Union[BaseEstimator, ClassifierMixin]:
         """
         Load a saved XGBoost model from the given JSON path.
 
@@ -156,12 +157,14 @@ class DelayModel:
                 )
 
             # Create a new XGBClassifier instance
-            self._model = XGBClassifier()
+            model = XGBClassifier()
 
             # Load the model from the JSON
-            self._model.load_model(str(model_path))
+            model.load_model(str(model_path))
 
             logging.info("Model loaded successfully")
+            
+            return model
 
         except FileNotFoundError as e:
             logging.error(f"Model file not found: {e}")
@@ -199,6 +202,8 @@ class DelayModel:
 
         # Create a dictionary mapping class labels to weights
         class_weights = dict(zip(classes, weights))
+        
+        print(class_weights)
 
         return class_weights
 
@@ -220,14 +225,18 @@ class DelayModel:
         target = None
 
         if target_column:
-            target = self._create_delay_target(data)
+            self.target_column = target_column
+            target = self._create_delay_target(data, target_column)
 
         features = self._create_one_hot_features(data)
 
         # Ensure all expected feature columns are present
         features = features.reindex(columns=self.TOP_FEATURES, fill_value=0)
 
-        return features, target
+        if target_column:
+            return features, target
+        else:
+            return features
 
     def fit(self, features: pd.DataFrame, target: pd.DataFrame) -> None:
         """
@@ -244,10 +253,13 @@ class DelayModel:
             random_state=self.DATA_SPLITTING_RANDOM_STATE,
         )
 
-        class_weights = self._calculate_class_weights(target=target)
+        target_series = target[self.target_column]
+        class_weights = self._calculate_class_weights(target=target_series)
 
         # For binary classification, XGBoost uses scale_pos_weight
-        scale_pos_weight = class_weights[0] / class_weights[1]
+        scale_pos_weight = class_weights[1] / class_weights[0]
+        
+        print(scale_pos_weight)
 
         # Initialize and train the model
         model = XGBClassifier(
