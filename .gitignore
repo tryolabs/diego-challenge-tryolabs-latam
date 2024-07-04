@@ -9,6 +9,9 @@ __pycache__/
 # Mac
 .DS_Store
 
+# venv
+latam/
+
 # Distribution / packaging
 .Python
 build/
