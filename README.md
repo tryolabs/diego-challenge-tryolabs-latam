@@ -88,7 +88,7 @@ In order to operationalize the model, transcribe the `.ipynb` file into the `mod
 - The DS proposed a few models in the end. Choose the best model at your discretion, argue why. **It is not necessary to make improvements to the model.**
 - Apply all the good programming practices that you consider necessary in this item.
 - The model should pass the tests by running `make model-test`.
-
+r
 > **Note:**
 > - **You cannot** remove or change the name or arguments of **provided** methods.
 > - **You can** change/complete the implementation of the provided methods.
