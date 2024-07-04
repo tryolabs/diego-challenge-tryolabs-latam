@@ -35,7 +35,7 @@ class DelayModel:
 
     DELAY_THRESHOLD_MINUTES = 1
 
-    MODEL_FILE_NAME = Path("model.joblib")
+    MODEL_FILE_NAME = Path("model.json")
     MODEL_PATH = Path("challenge/models")
 
     def __init__(self):
@@ -57,19 +57,23 @@ class DelayModel:
 
     def _get_minute_diff(self, data: pd.DataFrame) -> pd.Series:
         """
-        Calculate the difference in minutes between two datetime columns in a DataFrame.
+        Calculate the difference in minutes between two datetime columns in a 
+        DataFrame.
 
         Parameters
         ----------
         data : pd.DataFrame
             A DataFrame containing two columns:
-            - 'Fecha-O': datetime or str, a datetime column or string in the format '%Y-%m-%d %H:%M:%S'
-            - 'Fecha-I': datetime or str, a datetime column or string in the format '%Y-%m-%d %H:%M:%S'
+            - 'Fecha-O': datetime or str, a datetime column or string in the
+            format '%Y-%m-%d %H:%M:%S'
+            - 'Fecha-I': datetime or str, a datetime column or string in the
+            format '%Y-%m-%d %H:%M:%S'
 
         Returns
         -------
         pd.Series
-            A Series containing the difference in minutes between 'Fecha-O' and 'Fecha-I' for each row.
+            A Series containing the difference in minutes between 'Fecha-O'
+        and 'Fecha-I' for each row.
         """
         try:
             fecha_o = pd.to_datetime(data["Fecha-O"])
@@ -279,4 +283,9 @@ class DelayModel:
         Returns:
             (List[int]): predicted targets.
         """
-        return
+        if self._model is None:
+            logging.warning("Model wasn't found.")
+            self._load_model(self.complete_model_path)
+
+        predictions = self._model.predict(features)
+        return predictions.tolist()
