@@ -1,10 +1,15 @@
+import logging
 from pathlib import Path
 from typing import List, Tuple, Union
 
-import joblib
+import json
+import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator, ClassifierMixin
-import numpy as np
+from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.model_selection import train_test_split
+from sklearn.utils.class_weight import compute_class_weight
+from xgb import XGBClassifier
 
 
 class DelayModel:
@@ -22,9 +27,15 @@ class DelayModel:
         "OPERA_Copa Air",
     ]
 
+    DATA_SPLITTING_RANDOM_STATE = 42
+    TEST_SIZE = 0.33
+
+    MODEL_RANDOM_STATE = 1
+    LEARNING_RATE = 0.01
+
     DELAY_THRESHOLD_MINUTES = 1
 
-    MODEL_FILE_NAME = "model.joblib"
+    MODEL_FILE_NAME = Path("model.joblib")
     MODEL_PATH = Path("challenge/models")
 
     def __init__(self):
@@ -118,16 +129,74 @@ class DelayModel:
         delay_target = np.where(data["min_diff"] > self.DELAY_THRESHOLD_MINUTES, 1, 0)
         return pd.DataFrame({target_column: delay_target}, index=data.index)
 
-    def _load_model(self, path: str):
+    def _load_model(self, model_path: Path):
         """
-        Load a saved model from the given path.
+        Load a saved XGBoost model from the given JSON path.
 
         Parameters
         ----------
-        path : str
-            Path to the saved model file.
+        path : Path
+            Path to the saved model JSON file.
         """
-        self._model = joblib.load(path)
+        logging.info(f"Loading model from {model_path}")
+
+        try:
+            # Check if the file exists and is a file (not a directory)
+            if not model_path.is_file():
+                raise FileNotFoundError(f"No file found at {model_path}")
+
+            # Check if the file has a .json extension
+            if model_path.suffix.lower() != ".json":
+                logging.warning(
+                    f"File {model_path} does not have a .json extension. Attempting to load anyway."
+                )
+
+            # Create a new XGBClassifier instance
+            self._model = XGBClassifier()
+
+            # Load the model from the JSON
+            self._model.load_model(str(model_path))
+
+            logging.info("Model loaded successfully")
+
+        except FileNotFoundError as e:
+            logging.error(f"Model file not found: {e}")
+        except json.JSONDecodeError:
+            logging.error(
+                f"Error decoding JSON from {model_path}. Make sure it's a valid JSON file."
+            )
+        except PermissionError:
+            logging.error(f"Permission denied when trying to read {model_path}")
+        except Exception as e:
+            logging.error(f"Error loading model: {str(e)}")
+
+    def _calculate_class_weights(self, target: pd.Series) -> dict:
+        """
+        Calculate class weights for balancing classes in a dataset.
+
+        Parameters
+        ----------
+        target : pd.Series
+            The target column containing class labels.
+
+        Returns
+        -------
+        dict
+            A dictionary where keys are class labels and values are the
+        corresponding weights.
+        """
+        # Get unique classes
+        classes = np.unique(target)
+
+        # Compute class weights
+        weights = compute_class_weight(
+            class_weight="balanced", classes=classes, y=target
+        )
+
+        # Create a dictionary mapping class labels to weights
+        class_weights = dict(zip(classes, weights))
+
+        return class_weights
 
     def preprocess(
         self, data: pd.DataFrame, target_column: str = None
@@ -164,7 +233,41 @@ class DelayModel:
             features (pd.DataFrame): preprocessed data.
             target (pd.DataFrame): target.
         """
-        return
+        x_train, x_test, y_train, y_test = train_test_split(
+            features,
+            target,
+            test_size=self.TEST_SIZE,
+            random_state=self.DATA_SPLITTING_RANDOM_STATE,
+        )
+
+        class_weights = self._calculate_class_weights(target=target)
+
+        # For binary classification, XGBoost uses scale_pos_weight
+        scale_pos_weight = class_weights[0] / class_weights[1]
+
+        # Initialize and train the model
+        model = XGBClassifier(
+            random_state=self.MODEL_RANDOM_STATE,
+            learning_rate=self.LEARNING_RATE,
+            scale_pos_weight=scale_pos_weight,
+        )
+
+        model.fit(x_train, y_train)
+
+        logging.info("Finished training, calculating test metrics...")
+
+        # Predictions
+        y_pred = model.predict(x_test)
+
+        # Metrics
+        conf_matrix = confusion_matrix(y_test, y_pred)
+        class_report = classification_report(y_test, y_pred)
+        logging.info(f"Confusion Matrix:\n{conf_matrix}")
+        logging.info(f"Classification Report:\n{class_report}")
+
+        # Save the model
+        model.save_model(self.complete_model_path)
+        self._model = model
 
     def predict(self, features: pd.DataFrame) -> List[int]:
         """
