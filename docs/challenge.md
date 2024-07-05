@@ -1,14 +1,12 @@
-
+# Part 1
 
 ## Notebook `.ipnyb` improvements
 
-### 1 Fix plotting issues
+### 1. Fix plotting issues
 
 The function `sns.barplot()` expects positional arguments. I had to add the `x=` and `y=` positional arguments to fix the plots.
 
-### 2 Improve plots
-
-#### 2.1 Code improvements
+### 2. Code cleaning
 
 **Added constant variables**
 
@@ -97,7 +95,11 @@ The delay rate (%) variable was calculated incorrectly. It was computed as the t
 
 For example, a delay rate of 19 for Houston means that for every 19 total flights, there is 1 delayed flight. This does not accurately represent a percentage measure. Therefore, I corrected the calculation to be the number of delays divided by the total number of flights, which provides a consistent percentage measure for the plots.
 
-#### 2.2 Visual Improvements
+**Wrong top 10 features**
+
+The hardcoded top 10 features in the code were not the top 10 features from the feature importance. Also, these features were calculated before the class balancing. It could be better to automatically select the top 10 features from the feature importance, and do this after the class balancing. I choose to keep the original top 10 features because they were enough to successfuly pass the model tests.
+
+### 3. Improve plots
 
 There were plots where the x axis labels were wrongly rotated:
 
@@ -145,3 +147,63 @@ After
 
 > [!NOTE] 
 > More improvements were made on the notebook, but I decided to not document every improvement. For the full version, check the notebook present in this GitHub repository.
+
+### 4. Model selection
+
+#### Advantages of XGBoost:
+
+1. Popularity and Robustness:
+
+* **Industry Standard**: XGBoost is widely used in industry due to its robust performance and versatility across various types of datasets.
+* **Proven Track Record**: It has a proven track record in winning numerous data science competitions and benchmarks.
+
+2. Handling Complex Datasets:
+
+* **Scalability**: XGBoost is designed to handle large-scale datasets efficiently.
+* **Advanced Features**: It includes advanced functionalities like handling missing values, regularization, and parallel processing, making it suitable for more complex datasets we might encounter in the future.
+
+#### Consideration for Logistic Regression:
+
+1. Response Time:
+
+* **Faster Predictions**: Logistic Regression models are generally faster in making predictions due to their simplicity.
+* **Lower Computational Cost**: They require less computational power, which can be crucial if the server's response time is a critical factor in our application.
+
+2. Training Speed:
+
+* **Quicker Training**: Logistic Regression typically trains faster than XGBoost, especially on smaller datasets. This can be advantageous during the development and tuning phases when rapid iterations are needed.
+
+3. Simplicity:
+
+* **Fewer Hyperparameters**: Logistic Regression has fewer hyperparameters to tune, which can simplify the model development process and reduce the risk of overfitting.
+
+#### Conclusion
+
+While XGBoost offers greater versatility and robustness for future larger and more complex datasets, the choice of Logistic Regression could be justified if the server's response time and computational efficiency are of paramount importance.
+
+**Final Decision:** I chose `XGBoost` with top 10 features and class balancing for its popularity and versatility. However, consider Logistic Regression if server response time becomes a critical factor.
+
+# Part 3: Deployment
+
+For the deployment phase, I used Google Cloud Platform (GCP) services. Specifically, I chose to:
+
+1. Save the Docker container as an artifact in Google Container Registry (GCR), which is GCP's private container image storage.
+
+2. Use Google Cloud Run, a serverless compute platform, to deploy and serve the web application.
+
+This approach offers the following benefits:
+
+- **Scalability**: Cloud Run automatically scales the number of container instances based on incoming traffic, ensuring efficient resource usage.
+- **Cost-effectiveness**: You only pay for the actual compute resources used during request processing.
+- **Simplicity**: Cloud Run abstracts away much of the underlying infrastructure management, allowing developers to focus on the application code.
+- **Fast deployment**: With the container image stored in GCR, deploying updates to Cloud Run is quick and straightforward.
+
+### Model Storage
+
+Instead of saving the model in the GitHub repository, I opted to store it in Google Cloud Storage. This approach is better for the following reasons:
+
+1. **Version Control**: It's easier to manage and update different versions of the model independently from the application code.
+2. **Repository Size**: Large model files are kept out of the Git repository, ensuring it stays lean and quicker to clone or pull.
+3. **Access Control**: You can set fine-grained permissions on who can access or modify the model.
+4. **Runtime Integration**: The application can easily load the model from Cloud Storage during runtime, allowing for model updates without redeploying the entire application.
+
