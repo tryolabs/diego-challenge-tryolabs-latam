@@ -281,6 +281,8 @@ class DelayModel:
         logging.info(f"Confusion Matrix:\n{conf_matrix}")
         logging.info(f"Classification Report:\n{class_report}")
 
+        # Ensure the directory exists
+        self.complete_model_path.parent.mkdir(parents=True, exist_ok=True)
         # Save the model
         model.save_model(self.complete_model_path)
         self._model = model
