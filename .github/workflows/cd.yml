@@ -3,11 +3,11 @@ name: 'Continuous Delivery'
 on:
   push:
     branches:
-      - develop
+      - main
       - release/*
   pull_request:
     branches:
-      - develop
+      - main
       - release/*
 
 jobs:
