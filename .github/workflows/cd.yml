@@ -51,7 +51,7 @@ jobs:
         service_account_key: ${{ secrets.GCP_CREDENTIALS }}
 
     - name: Download Model from GCS
-      run: gsutil cp gs://diego-tryolabs-latam_cloudbuild/${{ secrets.MODEL_NAME }}.json model.json
+      run: gsutil cp gs://diego-tryolabs-latam_cloudbuild/${{ secrets.MODEL_NAME }}.json models/model.json
 
     - name: Submit Build
       run: gcloud builds submit --region ${{ secrets.GCP_REGION }} --tag ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/delay-model/${{ secrets.GCP_IMAGE_NAME }}:latest
